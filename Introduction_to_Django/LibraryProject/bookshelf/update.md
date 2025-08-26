@@ -1,3 +1,4 @@
+book2 = Book.objects.get(id=1)
 book2.title = "Nineteen Eighty-Four"
 book2.save
 print(book2.title)
