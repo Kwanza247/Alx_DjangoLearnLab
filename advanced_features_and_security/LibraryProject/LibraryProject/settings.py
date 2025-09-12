@@ -39,11 +39,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'bookshelf',
     'relationship_app',
-    'accounts',
 ]
 
 # Use the custom user model for authentication
-AUTH_USER_MODEL = "accounts.CustomUser"
+AUTH_USER_MODEL = "bookshelf.CustomUser"
 
 LOGIN_REDIRECT_URL = '/'  #redirect after login
 LOGOUT_REDIRECT_URL = '/login/' #redirect after logout
