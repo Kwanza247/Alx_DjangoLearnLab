@@ -170,3 +170,5 @@ if not DEBUG:  # Only enforce in production
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
+# ✅ Tell Django it’s safe to trust the X-Forwarded-Proto header set by Nginx/Apache
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
