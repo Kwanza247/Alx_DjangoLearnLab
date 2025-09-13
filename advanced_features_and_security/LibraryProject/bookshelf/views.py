@@ -2,8 +2,21 @@ from django.shortcuts import render, get_object_or_404
 from django.http import HttpResponse
 from django.contrib.auth.decorators import permission_required
 from .models import Book
+from .forms import ExampleForm   # ✅ import form
 
 # Create your views here.
+
+# Example form view with CSRF protection
+def example_form_view(request):
+    if request.method == "POST":
+        form = ExampleForm(request.POST)
+        if form.is_valid():
+            # Handle the form securely here
+            return HttpResponse("Form submitted successfully!")
+    else:
+        form = ExampleForm()
+    return render(request, "bookshelf/form_example.html", {"form": form})
+
 # ✅ Search books safely
 def search_books(request):
     query = request.GET.get("q", "")
