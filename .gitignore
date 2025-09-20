@@ -1,3 +1,9 @@
+# Ignore unrelated project folders
 Introduction_to_Django/
 advanced_features_and_security/
 django-models/
+
+# Ignore database and pycache
+*.sqlite3
+__pycache__/
+*.pyc
