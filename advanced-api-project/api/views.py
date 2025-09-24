@@ -3,34 +3,46 @@ from .models import Book
 from .serializers import BookSerializer
 
 
-# List all books or create a new one
-class BookListCreateView(generics.ListCreateAPIView):
+class BookListView(generics.ListAPIView):
     """
-    GET: Return a list of all books
-    POST: Create a new book (authenticated users only)
+    GET: Return a list of all books (public access).
     """
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-
-    # Permissions: anyone can read, only authenticated can create
-    def get_permissions(self):
-        if self.request.method == 'POST':
-            return [permissions.IsAuthenticated()]
-        return [permissions.AllowAny()]
+    permission_classes = [permissions.AllowAny]
 
 
-# Retrieve, update, or delete a book by ID
-class BookDetailView(generics.RetrieveUpdateDestroyAPIView):
+class BookDetailView(generics.RetrieveAPIView):
     """
-    GET: Retrieve a single book
-    PUT/PATCH: Update an existing book (authenticated users only)
-    DELETE: Remove a book (authenticated users only)
+    GET: Retrieve a single book by ID (public access).
     """
     queryset = Book.objects.all()
     serializer_class = BookSerializer
+    permission_classes = [permissions.AllowAny]
 
-    # Permissions: anyone can read, only authenticated can update/delete
-    def get_permissions(self):
-        if self.request.method in ['PUT', 'PATCH', 'DELETE']:
-            return [permissions.IsAuthenticated()]
-        return [permissions.AllowAny()]
+
+class BookCreateView(generics.CreateAPIView):
+    """
+    POST: Create a new book (authenticated users only).
+    """
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class BookUpdateView(generics.UpdateAPIView):
+    """
+    PUT/PATCH: Update an existing book (authenticated users only).
+    """
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class BookDeleteView(generics.DestroyAPIView):
+    """
+    DELETE: Remove a book (authenticated users only).
+    """
+    queryset = Book.objects.all()
+    serializer_class = BookSerializer
+    permission_classes = [permissions.IsAuthenticated]
