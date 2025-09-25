@@ -4,10 +4,11 @@ from .models import Book
 from .serializers import BookSerializer
 
 
-class BookListView(generics.ListCreateAPIView):
+class BookListView(generics.ListAPIView):  # ✅ Only listing allowed
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]  # Anyone can view, only logged in users can add
+    permission_classes = [IsAuthenticatedOrReadOnly]
+
 
 
 class BookDetailView(generics.RetrieveAPIView):
