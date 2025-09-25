@@ -9,3 +9,9 @@
 ### Permissions
 - Unauthenticated users → read-only
 - Authenticated users → full CRUD access
+
+
+### Filtering, Searching & Ordering
+- Filter: `/books/?publication_year=1958`
+- Search: `/books/?search=Arrow`
+- Order: `/books/?ordering=-publication_year`
