@@ -57,55 +57,24 @@ def profile_view(request):
 # --- Post List & Detail (public) ----------------------------------------
 class PostListView(ListView):
     model = Post
-    template_name = "blog/posts/post_list.html"   # blog/templates/blog/posts/post_list.html
+    template_name = "blog/post_list.html"
     context_object_name = "posts"
-    paginate_by = 10
-    ordering = ['-published_date']
 
 class PostDetailView(DetailView):
     model = Post
-    template_name = "blog/posts/post_detail.html"
-    context_object_name = "post"
+    template_name = "blog/post_detail.html"
 
-# --- Create, Update, Delete (authenticated + author checks) -------------
-class PostCreateView(LoginRequiredMixin, CreateView):
+class PostCreateView(CreateView):
     model = Post
-    form_class = PostForm
-    template_name = "blog/posts/post_form.html"
+    template_name = "blog/post_form.html"
+    fields = ["title", "content"]
 
-    def form_valid(self, form):
-        # set the author from the logged-in user
-        form.instance.author = self.request.user
-        response = super().form_valid(form)
-        messages.success(self.request, "Post created successfully.")
-        return response
-
-class PostUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+class PostUpdateView(UpdateView):
     model = Post
-    form_class = PostForm
-    template_name = "blog/posts/post_form.html"
+    template_name = "blog/post_form.html"
+    fields = ["title", "content"]
 
-    def test_func(self):
-        post = self.get_object()
-        return post.author == self.request.user
-
-    def handle_no_permission(self):
-        messages.error(self.request, "You are not allowed to edit this post.")
-        return super().handle_no_permission()
-
-    def form_valid(self, form):
-        messages.success(self.request, "Post updated successfully.")
-        return super().form_valid(form)
-
-class PostDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
+class PostDeleteView(DeleteView):
     model = Post
-    template_name = "blog/posts/post_confirm_delete.html"
-    success_url = reverse_lazy("blog:post-list")
-
-    def test_func(self):
-        post = self.get_object()
-        return post.author == self.request.user
-
-    def handle_no_permission(self):
-        messages.error(self.request, "You are not allowed to delete this post.")
-        return super().handle_no_permission()
+    template_name = "blog/post_confirm_delete.html"
+    success_url = reverse_lazy("post_list")
