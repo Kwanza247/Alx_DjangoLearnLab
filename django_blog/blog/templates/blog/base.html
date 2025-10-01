@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+
+<html lang="en"> 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Django Blog</title>
+    <link rel="stylesheet" href="{% static 'blog/style.css' %}">
+</head>
+<body>
+    <header>Welcome to My Django Blog</header>
+    <main>
+        {% block content %}
+        <p>This is the base template. Child template will override this section.</p>
+        {% endblock %}
+    </main>
+    <footer>
+        <p>&copy; 2025 Django Blog</p>
+    </footer>
+    <script src="{% static 'blog/style.css' %}"></script>
+</body>
+</html>
