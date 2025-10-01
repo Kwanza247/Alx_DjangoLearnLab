@@ -1,0 +1,17 @@
+{% extends "blog/base.html" %}
+{% load static %}
+{% block content %}
+<h2>Profile</h2>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <label>Username: {{ user.username }}</label><br>
+  <label for="id_email">Email:</label>
+  <input type="email" name="email" id="id_email" value="{{ user.email }}"><br><br>
+
+  {{ pform.as_p }}
+
+  <button type="submit">Save changes</button>
+</form>
+
+{% endblock %}
