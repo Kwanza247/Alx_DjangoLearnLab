@@ -8,7 +8,7 @@ from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView,DetailView, CreateView, UpdateView, DeleteView
 from .forms import CustomUserCreationForm, ProfileForm, PostForm
-from .models import Post, Tag
+from .models import Post
 
 def register_view(request):
     if request.method == "POST":
