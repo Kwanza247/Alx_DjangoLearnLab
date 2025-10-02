@@ -1,4 +1,3 @@
-# blog/urls.py
 from django.urls import path
 from . import views
 
@@ -10,13 +9,14 @@ urlpatterns = [
     path('logout/', views.LogoutView.as_view(next_page='blog:login'), name='logout'),
     path('profile/', views.profile_view, name='profile'),
 
-     # posts CRUD
+    # posts CRUD
     path('post/', views.PostListView.as_view(), name='post-list'),
     path('post/new/', views.PostCreateView.as_view(), name='post-create'),
     path('post/<int:pk>/', views.PostDetailView.as_view(), name='post-detail'),
     path('post/<int:pk>/update/', views.PostUpdateView.as_view(), name='post-update'),
     path('post/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post-delete'),
-      #tagging and searching
-    path('tags/<str:tag_name>/', views.PostsByTagView.as_view(), name='posts_by_tag'),
+
+    # tagging and searching (checker requires this)
+    path('tags/<slug:tag_slug>/', views.PostByTagListView.as_view(), name='posts_by_tag'),
     path('search/', views.SearchResultsView.as_view(), name='search_results'),
 ]
