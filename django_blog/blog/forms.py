@@ -27,6 +27,10 @@ class ProfileForm(forms.ModelForm):
         }
 
 class PostForm(forms.ModelForm):
+    tags = forms.CharField(
+        required=False,
+        help_text="Add tags seperated by commas(e.g. django,python,web)",
+    )
     class Meta:
         model = Post
         fields = ("title", "content")
@@ -34,3 +38,14 @@ class PostForm(forms.ModelForm):
             "title": forms.TextInput(attrs={"placeholder": "Post title"}),
             "content": forms.Textarea(attrs={"rows":8, "placeholder": "Write your post..."}),
         }
+    
+    def clean_tags(self):
+        raw = self.cleaned_data.get("tags", "")
+        #normalize: split, strip, lowercase, unique
+        tags = [t.strip() for t in raw.split(",") if t.strip()]
+        normalized = []
+        for t in tags:
+            name = t.lower()
+            if name not in normalized:
+                normalized.append(name)
+            return normalized

@@ -1,0 +1,16 @@
+{% extends "blog/base.html" %}
+{% block content %}
+  <h2>Search results for "{{ request.GET.q }}"</h2>
+
+  <ul>
+  {% for post in posts %}
+    <li>
+      <h3><a href="{% url 'blog:post_detail' post.pk %}">{{ post.title }}</a></h3>
+      <p>{{ post.content|truncatechars:150 }}</p>
+      <p>Tags: {% for t in post.tags.all %}<a href="{% url 'blog:posts_by_tag' t.name %}">#{{ t.name }}</a>{% if not forloop.last %}, {% endif %}{% empty %}No tags{% endfor %}</p>
+    </li>
+  {% empty %}
+    <li>No results found.</li>
+  {% endfor %}
+  </ul>
+{% endblock %}

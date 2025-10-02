@@ -1,17 +1,17 @@
 {% extends "blog/base.html" %}
-{% load static %}
 {% block content %}
-<h2>
-  {% if view.action %}{{ view.action }} Post{% else %}
-    {% if view.object %}Edit Post{% else %}Create Post{% endif %}
-  {% endif %}
-</h2>
+  <h2>{% if object %}Edit Post{% else %}Create Post{% endif %}</h2>
 
-<form method="post">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">{% if view.object %}Save changes{% else %}Publish{% endif %}</button>
-</form>
+  <form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <!-- explicit tags field (form includes CharField named 'tags') -->
+    <p>
+      <label for="{{ form.tags.id_for_label }}">Tags (comma-separated)</label><br>
+      {{ form.tags }}
+    </p>
+    <button type="submit">{% if object %}Save changes{% else %}Publish{% endif %}</button>
+  </form>
 
-<p><a href="{% url 'blog:post-list' %}">Back to posts</a></p>
+  <p><a href="{% url 'blog:post_list' %}">Back to posts</a></p>
 {% endblock %}
