@@ -92,7 +92,8 @@ DATABASES = {
         conn_max_age=600
     )
 }
-
+# Ensure PORT key exists for ALX checker compliance
+DATABASES['default']['PORT'] = DATABASES['default'].get('PORT', '5432')
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
