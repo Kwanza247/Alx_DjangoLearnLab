@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Post, Comment
+from .models import Post, Comment, Like
 
 User = get_user_model()
 
@@ -24,6 +24,24 @@ class CommentSerializer(serializers.ModelSerializer):
             validated_data['author'] = request.user
         return super().create(validated_data)
 
+
+class LikeSerializer(serializers.ModelSerializer):
+    user = serializers.ReadOnlyField(source='user.username')
+
+    class Meta:
+        model = Like
+        fields = ['id', 'user', 'post', 'created_at']
+        read_only_fields = ['id', 'user', 'created_at']
+
+# Update PostSerializer (if you want to show likes count)
+class PostSerializer(serializers.ModelSerializer):
+    author = serializers.ReadOnlyField(source='author.username')
+    comments = CommentSerializer(many=True, read_only=True)
+    likes_count = serializers.IntegerField(source='likes.count', read_only=True)
+
+    class Meta:
+        model = Post
+        fields = ['id', 'author', 'title', 'content', 'created_at', 'updated_at', 'comments', 'likes_count']
 
 class PostSerializer(serializers.ModelSerializer):
     author = UserSimpleSerializer(read_only=True)

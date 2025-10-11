@@ -6,7 +6,12 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
 
-# Alias for the checker requirement
+# ✅ Import Notification model safely
+try:
+    from notifications.models import Notification
+except Exception:
+    Notification = None
+
 CustomUser = get_user_model()
 
 
@@ -68,6 +73,14 @@ class FollowUserView(APIView):
 
         user_to_follow = get_object_or_404(CustomUser.objects.all(), pk=user_id)
         request.user.following.add(user_to_follow)
+
+        # ✅ Create a notification for the user being followed
+        if Notification and user_to_follow != request.user:
+            Notification.objects.create(
+                recipient=user_to_follow,
+                actor=request.user,
+                verb='started following you'
+            )
 
         return Response(
             {"detail": f"You are now following {user_to_follow.username}."},
