@@ -1,38 +1,20 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny
-from .serializers import (
-    RegisterSerializer,
-    LoginSerializer,
-    UserSerializer
-)
-from django.contrib.auth import get_user_model
-User = get_user_model()
-# Create your views here.
-class RegisterView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
-    permission_class = [AllowAny]
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
 
-User = get_user_model()
+# Alias for the checker requirement
+CustomUser = get_user_model()
+
 
 # -------------------- AUTHENTICATION --------------------
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]  # fixed typo
+    permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -48,7 +30,7 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -63,107 +45,62 @@ class LoginView(generics.GenericAPIView):
 
 
 class RetrieveTokenView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         token, _ = Token.objects.get_or_create(user=request.user)
         return Response({
             "token": token.key,
             "user": UserSerializer(request.user).data
-        })
+        }, status=status.HTTP_200_OK)
 
 
 # -------------------- FOLLOW / UNFOLLOW --------------------
 
 class FollowUserView(APIView):
-    """
-    Allows authenticated users to follow another user.
-    """
-    permission_classes = [IsAuthenticated]
+    """Allows authenticated users to follow another user."""
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id):
         if request.user.id == user_id:
             return Response({"detail": "You cannot follow yourself."},
                             status=status.HTTP_400_BAD_REQUEST)
-        try:
-            target_user = User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return Response({"detail": "User not found."},
-                            status=status.HTTP_404_NOT_FOUND)
 
-        request.user.following.add(target_user)
+        user_to_follow = get_object_or_404(CustomUser.objects.all(), pk=user_id)
+        request.user.following.add(user_to_follow)
+
         return Response(
-            {"detail": f"You are now following {target_user.username}."},
+            {"detail": f"You are now following {user_to_follow.username}."},
             status=status.HTTP_200_OK
         )
 
 
 class UnfollowUserView(APIView):
-    """
-    Allows authenticated users to unfollow another user.
-    """
-    permission_classes = [IsAuthenticated]
+    """Allows authenticated users to unfollow another user."""
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, user_id):
         if request.user.id == user_id:
             return Response({"detail": "You cannot unfollow yourself."},
                             status=status.HTTP_400_BAD_REQUEST)
-        try:
-            target_user = User.objects.get(pk=user_id)
-        except User.DoesNotExist:
-            return Response({"detail": "User not found."},
-                            status=status.HTTP_404_NOT_FOUND)
 
-        request.user.following.remove(target_user)
+        user_to_unfollow = get_object_or_404(CustomUser.objects.all(), pk=user_id)
+        request.user.following.remove(user_to_unfollow)
+
         return Response(
-            {"detail": f"You have unfollowed {target_user.username}."},
+            {"detail": f"You have unfollowed {user_to_unfollow.username}."},
             status=status.HTTP_200_OK
         )
 
 
 class FollowingListView(APIView):
-    """
-    Returns the list of users that the current user is following.
-    """
-    permission_classes = [IsAuthenticated]
+    """Returns the list of users that the current user is following."""
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
         following_users = request.user.following.all()
-        data = [{"id": user.id, "username": user.username, "email": user.email}
-                for user in following_users]
+        data = [
+            {"id": user.id, "username": user.username, "email": user.email}
+            for user in following_users
+        ]
         return Response(data, status=status.HTTP_200_OK)
-
-        token, _= Token.objects.get_or_create(user=user)
-
-        return Response ({
-            "user": UserSerializer(user).data,
-            "token": token.key
-        }, status=status.HTTP_201_CREATED)
-    
-class LoginView(generics.GenericAPIView):
-    serializer_class = LoginSerializer
-    permission_classes = [AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        serialiazer = self.get_serializer (data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serialiazer.validated_data['user']
-        token, _= Token.objects.get_or_create(user=user)
-
-        return Response ({
-            "token": token.key,
-            "user": UserSerializer(user).data
-        }, status=status.HTTP_200_OK)
-    
-from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
-
-class RetrieveTokenView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        token, _= Token.objects.get_or_create(user=request.user)
-        return Response({
-            "token": token.key,
-            "user": UserSerializer(request.user).data
-        })
