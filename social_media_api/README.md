@@ -1,26 +1,27 @@
-# 🧠 Social Media API — User Authentication Module
+# 🌐 Social Media API — Follow System & Feed Feature
 
 ## 📘 Overview
 
-This project is the **first milestone** in building a full-featured **Social Media API** using **Django** and **Django REST Framework (DRF)**.  
-In this stage, the focus is on **project setup**, **custom user authentication**, and **token-based login**.  
+This project extends the **Social Media API** built with **Django** and **Django REST Framework (DRF)**.  
+It introduces **user following functionality** and a **personalized feed system** — allowing users to follow others and view posts made by the people they follow.  
 
 Users can:
-- Register an account  
-- Log in and obtain an authentication token  
-- Manage their profile (bio, profile picture, followers)
+- Register, log in, and manage profiles
+- Follow and unfollow other users
+- View a feed of posts made by followed users
+- Create, edit, and delete their own posts and comments
 
 ---
 
 ## ⚙️ Step 1: Project Setup
 
 ### 1. Install Dependencies
-Make sure you have Python installed, then install Django and DRF:
+Make sure you have Django and DRF installed:
 
 ```bash
-pip install django djangorestframework djangorestframework-simplejwt
+pip install django djangorestframework django-filter djangorestframework-simplejwt
 
-in social_media_api/settings.py update the INSTALLED_APPS list:
+In social_media_api/settings.py, ensure these apps are added:
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -30,76 +31,55 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'django_filters',
     'accounts',
+    'posts',
 ]
-custom user model 
-accounts/models.py
 
+Step 2: User Model Update — Following System
+
+In accounts/models.py:
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 class User(AbstractUser):
     bio = models.TextField(blank=True)
     profile_picture = models.ImageField(upload_to='profiles/', blank=True, null=True)
-    followers = models.ManyToManyField('self', symmetrical=False, related_name='following', blank=True)
+    following = models.ManyToManyField('self', symmetrical=False, related_name='followers', blank=True)
 
     def __str__(self):
         return self.username
-then in settings.py
-AUTH_USER_MODEL = 'accounts.User'
 
+Then update settings.py:
+AUTH_USER_MODEL = 'accounts.User'
+Run migrations:
 python manage.py makemigrations
 python manage.py migrate
 
-#authentication serializers and views
-from rest_framework import serializers
-from django.contrib.auth import authenticate
-from .models import User
-from rest_framework.authtoken.models import Token
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'bio', 'profile_picture']
 
-class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
+🔐 Step 3: Authentication and Profile Management
 
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'password']
-
-    def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-        Token.objects.create(user=user)
-        return user
-
-class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
-    password = serializers.CharField(write_only=True)
-
-    def validate(self, data):
-        user = authenticate(**data)
-        if user and user.is_active:
-            return user
-        raise serializers.ValidationError("Invalid credentials")
-
-#accounts / views.py
+accounts/views.py
 from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import IsAuthenticated
-from .models import User
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from django.shortcuts import get_object_or_404
+from django.contrib.auth import get_user_model
 from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
+
+User = get_user_model()
 
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
+    permission_classes = [AllowAny]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token = Token.objects.get(user=user)
+        token, _ = Token.objects.get_or_create(user=user)
         return Response({
             "user": UserSerializer(user).data,
             "token": token.key
@@ -107,54 +87,169 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(generics.GenericAPIView):
     serializer_class = LoginSerializer
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data
-        token, created = Token.objects.get_or_create(user=user)
+        user = serializer.validated_data['user']
+        token, _ = Token.objects.get_or_create(user=user)
         return Response({
             "user": UserSerializer(user).data,
             "token": token.key
         })
 
 class ProfileView(generics.RetrieveUpdateAPIView):
-    permission_classes = [IsAuthenticated]
     serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
         return self.request.user
-#configuration ()accounts/urls.py
+
+class FollowUserView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        target_user = get_object_or_404(User, id=user_id)
+        request.user.following.add(target_user)
+        return Response({"message": f"You are now following {target_user.username}"})
+
+class UnfollowUserView(generics.GenericAPIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, user_id):
+        target_user = get_object_or_404(User, id=user_id)
+        request.user.following.remove(target_user)
+        return Response({"message": f"You unfollowed {target_user.username}"})
+📡 Step 4: Feed Functionality
+
+posts/views.py
+from rest_framework import generics, permissions, filters, viewsets
+from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Post, Comment
+from .serializers import PostSerializer, CommentSerializer
+from .permissions import IsAuthorOrReadOnly
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 50
+
+class PostViewSet(viewsets.ModelViewSet):
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['title', 'content']
+    ordering_fields = ['created_at', 'updated_at']
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    pagination_class = StandardResultsSetPagination
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['post']
+    search_fields = ['content']
+    ordering_fields = ['created_at']
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
+
+class FeedView(generics.ListAPIView):
+    serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        followed_users = user.following.all()
+        return Post.objects.filter(author__in=followed_users).order_by('-created_at')
+
+
+🔗 Step 5: URLs Configuration
+
+accounts/urls.py
 from django.urls import path
-from .views import RegisterView, LoginView, ProfileView
+from .views import RegisterView, LoginView, ProfileView, FollowUserView, UnfollowUserView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
     path('login/', LoginView.as_view(), name='login'),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('follow/<int:user_id>/', FollowUserView.as_view(), name='follow_user'),
+    path('unfollow/<int:user_id>/', UnfollowUserView.as_view(), name='unfollow_user'),
 ]
 
 
-#social_media_api/urls.py
+posts/urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import PostViewSet, CommentViewSet, FeedView
+
+router = DefaultRouter()
+router.register(r'posts', PostViewSet, basename='post')
+router.register(r'comments', CommentViewSet, basename='comment')
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('feed/', FeedView.as_view(), name='feed'),
+]
+
+social_media_api/urls.py
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import PostViewSet, CommentViewSet, FeedView
+
+router = DefaultRouter()
+router.register(r'posts', PostViewSet, basename='post')
+router.register(r'comments', CommentViewSet, basename='comment')
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('feed/', FeedView.as_view(), name='feed'),
+]
+
+
+social_media_api/urls.py
 from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/accounts/', include('accounts.urls')),
+    path('api/', include('posts.urls')),
 ]
-#testing
-python manage.py runserver
 
-#use postman or curl to test the end point
+
+🧠 Testing the API
+
+Use Postman or cURL to test:
+
+Register
 POST /api/accounts/register/
 {
   "username": "ibrahim",
   "email": "ibrahim@example.com",
   "password": "mypassword"
 }
-etc ...
-# project structure
+
+Follow User
+POST /api/accounts/follow/2/
+Authorization: Token <your_token>
+
+
+Feed
+GET /api/feed/
+Authorization: Token <your_token>
+
+
+📁 Project Structure
 social_media_api/
 │
 ├── social_media_api/
@@ -167,16 +262,24 @@ social_media_api/
 │   ├── serializers.py
 │   ├── urls.py
 │
+├── posts/
+│   ├── models.py
+│   ├── views.py
+│   ├── serializers.py
+│   ├── urls.py
+│
 ├── manage.py
 └── README.md
-🧾 Deliverables
 
-✅ Project setup with custom user model
 
-✅ User registration and login endpoints
+✅ Deliverables
 
-✅ Token authentication
+Updated user model with follow relationships
 
-✅ Profile management
+Follow/unfollow API endpoints
 
-✅ README documentation (this file)
+Feed endpoint displaying posts from followed users
+
+CRUD operations for posts and comments
+
+Comprehensive documentation (this README)
