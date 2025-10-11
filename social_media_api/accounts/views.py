@@ -1,49 +1,30 @@
-from rest_framework import generics, status
-from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from django.contrib.auth import authenticate
-from .serializers import RegisterSerializer, LoginSerializer, UserSerializer
+from rest_framework import viewsets, permissions
+from .models import Post, Comment
+from .serializers import PostSerializer, CommentSerializer
 
-class RegisterView(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
-    permission_classes = [AllowAny]
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        token, created = Token.objects.get_or_create(user=user)
-        return Response({
-            "user": UserSerializer(user, context=self.get_serializer_context()).data,
-            "token": token.key
-        }, status=status.HTTP_201_CREATED)
+# Custom permission: only owners can edit/delete their content
+class IsOwnerOrReadOnly(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        # Read permissions allowed for everyone
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        # Write permissions only for the author
+        return obj.author == request.user
 
 
-class LoginView(generics.GenericAPIView):
-    serializer_class = LoginSerializer
-    permission_classes = [AllowAny]
+class PostViewSet(viewsets.ModelViewSet):
+    queryset = Post.objects.all()  # ✅ Required for the check
+    serializer_class = PostSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        username = serializer.validated_data['username']
-        password = serializer.validated_data['password']
-        user = authenticate(username=username, password=password)
-
-        if user:
-            token, created = Token.objects.get_or_create(user=user)
-            return Response({
-                "token": token.key,
-                "user": UserSerializer(user).data
-            })
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
 
 
-class ProfileView(generics.RetrieveUpdateAPIView):
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
+class CommentViewSet(viewsets.ModelViewSet):
+    queryset = Comment.objects.all()  # ✅ Required for the check
+    serializer_class = CommentSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsOwnerOrReadOnly]
 
-    def get_object(self):
-        return self.request.user
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
